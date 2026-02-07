@@ -127,7 +127,7 @@ WORKDIR /app
 
 # install deps first to avoid cache miss or disturbing buildkit to build concurrently
 ARG TARGETPLATFORM
-ARG PUPPETEER_SKIP_DOWNLOAD=1
+ARG PUPPETEER_SKIP_DOWNLOAD=0
 # https://pptr.dev/troubleshooting#chrome-headless-doesnt-launch-on-unix
 # https://github.com/puppeteer/puppeteer/issues/7822
 # https://www.debian.org/releases/bookworm/amd64/release-notes/ch-information.en.html#noteworthy-obsolete-packages
