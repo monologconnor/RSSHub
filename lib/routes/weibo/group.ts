@@ -4,10 +4,9 @@ import { config } from '@/config';
 import ConfigNotFoundError from '@/errors/types/config-not-found';
 import type { Route } from '@/types';
 import cache from '@/utils/cache';
-import got from '@/utils/got';
 import logger from '@/utils/logger';
 import { getPuppeteerPage } from '@/utils/puppeteer';
-import { parseCookieArray } from '@/utils/puppeteer-utils';
+// import { parseCookieArray } from '@/utils/puppeteer-utils';
 import { fallback, queryToBoolean } from '@/utils/readable-social';
 
 import weiboUtils from './utils';
@@ -68,13 +67,13 @@ async function handler(ctx) {
         `weibo:group:index:${gid}`,
         async () => {
             logger.info(`cookie: ${config.weibo.cookies}`);
-            const { page } = await getPuppeteerPage(`https://m.weibo.cn/feed/group?gid=${gid}`, {
-                onBeforeLoad: async (page, browser) => {
+            const { destory, response } = await getPuppeteerPage(`https://m.weibo.cn/feed/group?gid=${gid}`, {
+                onBeforeLoad: async (page) => {
                     // const expectResourceTypes = new Set(['document', 'script', 'xhr', 'fetch']);
                     await page.setUserAgent(weiboUtils.apiHeaders['User-Agent']);
                     // await setCookies(page, config.weibo.cookies, 'https://m.weibo.cn/');
                     await page.setRequestInterception(true);
-                    logger.info(parseCookieArray(await browser.cookies()));
+                    // logger.info(parseCookieArray(await browser.cookies()));
                     page.on('request', (request) => {
                         // 1st: initial request, 302 to visitor.passport.weibo.cn; 2nd: auth ok
                         // if (!expectResourceTypes.has(request.resourceType()) || times >= 2) {
@@ -86,29 +85,30 @@ async function handler(ctx) {
                         // }
                         request.continue();
                     });
+                    // page.on('response', async (response) => {
+                    //     const url = response.url();
+                    //     const contentType = await response.content();
+                    //     logger.info("try get json: ", contentType);
+
+                    //     if (contentType && contentType.includes('applications/json')) {
+                    //         try {
+                    //             const jsonData = await response.json();
+                    //             logger.info(`Got JSON: ${url}: `, jsonData);
+                    // // logger.info(`Data: ${jsonData}`);
+                    //         } catch (error) {
+                    //             console.error(`Failed get JSON: ${url}: `, error);
+                    //         }
+                    //     }
+                    // });
                 },
                 // networkidle2 returns too early if the connection is slow
                 gotoConfig: { waitUntil: 'networkidle0' },
             });
 
-            // logger.info(`content: ${await page.content()}`)
-            // 探索 page 对象的可用方法
-            logger.info(
-                `Page methods available: ${Object.getOwnPropertyNames(page)
-                    .filter((p) => typeof page[p] === 'function')
-                    .join(', ')}`
-            );
+            const jsonData = await response.json();
+            destory();
 
-            const _r = await got({
-                method: 'get',
-                url: `https://m.weibo.cn/feed/group?gid=${gid}`,
-                headers: {
-                    Referer: `https://m.weibo.cn/`,
-                    Cookie: config.weibo.cookies,
-                    ...weiboUtils.apiHeaders,
-                },
-            });
-            return _r.data.data;
+            return jsonData.data;
         },
         config.cache.routeExpire,
         false

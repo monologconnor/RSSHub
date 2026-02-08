@@ -41,7 +41,7 @@ export const getPuppeteerPage = async (
             '--ignore-certificate-errors-spki-list',
             `--user-agent=${config.ua}`,
         ],
-        headless: true,
+        headless: false,
         userDataDir: './puppeteer_user_data',
         ignoreHTTPSErrors: true,
     };
@@ -83,34 +83,34 @@ export const getPuppeteerPage = async (
             hasProxy = true;
         }
     }
-    // let browser: Browser;
-    // if (config.puppeteerWSEndpoint) {
-    //     const endpointURL = new URL(config.puppeteerWSEndpoint);
-    //     endpointURL.searchParams.set('launch', JSON.stringify(options));
-    //     endpointURL.searchParams.set('stealth', 'true');
-    //     const endpoint = endpointURL.toString();
-    //     browser = await insidePuppeteer.connect({
-    //         browserWSEndpoint: endpoint,
-    //     });
-    // } else {
-    //     browser = await insidePuppeteer.launch(
-    //         config.chromiumExecutablePath
-    //             ? {
-    //                   executablePath: config.chromiumExecutablePath,
-    //                   ...options,
-    //               }
-    //             : options
-    //     );
-    // }
+    let browser: Browser;
+    if (config.puppeteerWSEndpoint) {
+        const endpointURL = new URL(config.puppeteerWSEndpoint);
+        endpointURL.searchParams.set('launch', JSON.stringify(options));
+        endpointURL.searchParams.set('stealth', 'true');
+        const endpoint = endpointURL.toString();
+        browser = await insidePuppeteer.connect({
+            browserWSEndpoint: endpoint,
+        });
+    } else {
+        browser = await insidePuppeteer.launch(
+            config.chromiumExecutablePath
+                ? {
+                      executablePath: config.chromiumExecutablePath,
+                      ...options,
+                  }
+                : options
+        );
+    }
 
-    const browser: Browser = await insidePuppeteer.launch(
-        config.chromiumExecutablePath
-            ? {
-                  executablePath: config.chromiumExecutablePath,
-                  ...options,
-              }
-            : options
-    );
+    // const browser: Browser = await insidePuppeteer.launch(
+    //     config.chromiumExecutablePath
+    //         ? {
+    //               executablePath: config.chromiumExecutablePath,
+    //               ...options,
+    //           }
+    //         : options
+    // );
 
     setTimeout(async () => {
         await browser.close();
@@ -133,9 +133,10 @@ export const getPuppeteerPage = async (
         await instanceOptions.onBeforeLoad(page, browser);
     }
 
+    let response;
     if (!instanceOptions.noGoto) {
         try {
-            await page.goto(url, instanceOptions.gotoConfig || { waitUntil: 'domcontentloaded' });
+            response = await page.goto(url, instanceOptions.gotoConfig || { waitUntil: 'domcontentloaded' });
         } catch (error) {
             if (hasProxy && currentProxyState && proxy.multiProxy) {
                 logger.warn(`Puppeteer navigation failed with proxy ${currentProxyState.uri}, marking as failed: ${error}`);
@@ -152,5 +153,6 @@ export const getPuppeteerPage = async (
             await browser.close();
         },
         browser,
+        response,
     };
 };
