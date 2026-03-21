@@ -48,6 +48,7 @@ async function handler(ctx) {
 
     const gid = ctx.req.param('gid');
     const groupName = ctx.req.param('gname') || '微博分组';
+    const limit = ctx.req.param('limit') ?? 50;
     let displayVideo = '1';
     let displayArticle = '0';
     let displayComments = '0';
@@ -65,30 +66,35 @@ async function handler(ctx) {
     const responseData = await cache.tryGet(
         `weibo:group:index:${gid}`,
         async () => {
-            // const _r = await got({
-            //     method: 'get',
-            //     url: `https://m.weibo.cn/feed/group?gid=${gid}`,
-            //     headers: {
-            //         Referer: `https://m.weibo.cn/`,
-            //         Cookie: config.weibo.cookies,
-            //         ...weiboUtils.apiHeaders,
-            //     },
-            // });
+            const allItems = [];
+            let nextCursor = null;
+            let responseData;
 
             const { page, destory } = await puppeteer(`https://m.weibo.cn/feed/group?gid=${gid}`);
 
-            const bodyText = await page.evaluate(() => document.body.textContent);
+            while (allItems.length < limit) {
+                // eslint-disable-next-line no-await-in-loop
+                const bodyText = await page.evaluate(() => document.body.textContent);
+                responseData = JSON.parse(bodyText).data;
+                nextCursor = responseData.next_cursor_str;
+                allItems.push(...responseData.statuses);
+
+                const url = `https://m.weibo.cn/feed/group?gid=${gid}&max_id=${nextCursor}`;
+                // eslint-disable-next-line no-await-in-loop
+                await page.goto(url);
+            }
+
             // logger.info(bodyText);
             //
             await destory();
-            return JSON.parse(bodyText).data;
+            return allItems.slice(0, limit);
         },
         config.cache.routeExpire,
         false
     );
 
     const resultItems = await Promise.all(
-        responseData.statuses.map(async (item) => {
+        responseData.map(async (item) => {
             const retweet = item.retweeted_status;
             if (retweet && retweet.isLongText) {
                 const retweetData = await cache.tryGet(`weibo:retweeted:${retweet.user.id}:${retweet.bid}`, () => weiboUtils.getShowData(retweet.user.id, retweet.bid));
