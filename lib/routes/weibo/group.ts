@@ -4,10 +4,11 @@ import { config } from '@/config';
 import ConfigNotFoundError from '@/errors/types/config-not-found';
 import type { Route } from '@/types';
 import cache from '@/utils/cache';
-import got from '@/utils/got';
+import puppeteer from '@/utils/puppeteer';
 import { fallback, queryToBoolean } from '@/utils/readable-social';
 
 import weiboUtils from './utils';
+// import logger from '@/utils/logger';
 
 export const route: Route = {
     path: '/group/:gid/:gname?/:routeParams?',
@@ -64,16 +65,23 @@ async function handler(ctx) {
     const responseData = await cache.tryGet(
         `weibo:group:index:${gid}`,
         async () => {
-            const _r = await got({
-                method: 'get',
-                url: `https://m.weibo.cn/feed/group?gid=${gid}`,
-                headers: {
-                    Referer: `https://m.weibo.cn/`,
-                    Cookie: config.weibo.cookies,
-                    ...weiboUtils.apiHeaders,
-                },
-            });
-            return _r.data.data;
+            // const _r = await got({
+            //     method: 'get',
+            //     url: `https://m.weibo.cn/feed/group?gid=${gid}`,
+            //     headers: {
+            //         Referer: `https://m.weibo.cn/`,
+            //         Cookie: config.weibo.cookies,
+            //         ...weiboUtils.apiHeaders,
+            //     },
+            // });
+
+            const { page, destory } = await puppeteer(`https://m.weibo.cn/feed/group?gid=${gid}`);
+
+            const bodyText = await page.evaluate(() => document.body.textContent);
+            // logger.info(bodyText);
+            //
+            await destory();
+            return JSON.parse(bodyText).data;
         },
         config.cache.routeExpire,
         false
