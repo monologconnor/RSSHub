@@ -1,7 +1,7 @@
 import querystring from 'node:querystring';
 
 import { config } from '@/config';
-import ConfigNotFoundError from '@/errors/types/config-not-found';
+// import ConfigNotFoundError from '@/errors/types/config-not-found';
 import type { Route } from '@/types';
 import cache from '@/utils/cache';
 import puppeteer from '@/utils/puppeteer';
@@ -42,9 +42,9 @@ export const route: Route = {
 };
 
 async function handler(ctx) {
-    if (!config.weibo.cookies) {
-        throw new ConfigNotFoundError('Weibo Group Timeline is not available due to the absense of [Weibo Cookies]. Check <a href="https://docs.rsshub.app/deploy/config#route-specific-configurations">relevant config tutorial</a>');
-    }
+    // if (!config.weibo.cookies) {
+    //     throw new ConfigNotFoundError('Weibo Group Timeline is not available due to the absense of [Weibo Cookies]. Check <a href="https://docs.rsshub.app/deploy/config#route-specific-configurations">relevant config tutorial</a>');
+    // }
 
     const gid = ctx.req.param('gid');
     const groupName = ctx.req.param('gname') || '微博分组';
